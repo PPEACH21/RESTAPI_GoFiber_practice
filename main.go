@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/template/html/v2"
@@ -13,6 +15,16 @@ type Book struct {
 	ID     int    `json:"id"`
 	Tittle string `json:"title"`
 	Author string `json:"author"`
+}
+
+type User = struct{
+	Email 	string 	`json:"email"`
+	Password string	`json:"password"`
+}
+
+var member = User{
+	Email:"User@gmail.com",
+	Password:"Password123",
 }
 
 var books []Book
@@ -29,18 +41,47 @@ func main() {
 
 	books = append(books, Book{ID: 1, Tittle: "PEACHCER", Author: "PPEACH21"})
 	books = append(books, Book{ID: 2, Tittle: "PEERAPAT", Author: "SAENGPHOEM"})
+	
 
-	app.Get("/books",getBooks)
-	app.Get("/books/:id",getBook)
-	app.Post("/books",createBook)
-	app.Put("/editbook/:id",editBook)
-	app.Delete("/deletebook/:id",deleteBook)
-	app.Post("/upload",uploadFile)
-	app.Get("/html",testHTML)
-	app.Get("/api/config", getEnv)
+	app.Post("/login",login)
+
+	app.Use(checkMiddleware)
+		app.Get("/books",getBooks)
+		app.Get("/books/:id",getBook)
+		app.Post("/books",createBook)
+		app.Put("/editbook/:id",editBook)
+		app.Delete("/deletebook/:id",deleteBook)
+		app.Post("/upload",uploadFile)
+		app.Get("/html",testHTML)
+		app.Get("/api/config", getEnv)
 	app.Listen(":8080")
 }
 
+
+func login(c *fiber.Ctx) error{
+	user := new(User)
+	
+	if err := c.BodyParser(user) ; err!=nil{
+		return  c.Status(fiber.StatusBadRequest).SendString(err.Error())
+	}
+
+	if user.Email!= member.Email || user.Password != member.Password{
+		return fiber.ErrUnauthorized
+	}
+	return c.JSON(fiber.Map{
+		"message" : "Login success",
+	})
+}
+
+func checkMiddleware(c *fiber.Ctx)error{
+	start:=time.Now().In(time.FixedZone("UTC+7", 7*60*60))
+
+	fmt.Printf(
+		"URL = %s, Method = %s, Time = %s\n",
+		c.OriginalURL(),c.Method(),start,
+	)
+	return c.Next()
+}
 
 func getEnv(c *fiber.Ctx)error{
 	secret := os.Getenv("SECRET")
