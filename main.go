@@ -23,6 +23,7 @@ func main() {
 	app.Post("/books",createBook)
 	app.Put("/editbook/:id",editBook)
 	app.Delete("/deletebook/:id",deleteBook)
+	app.Post("/upload",uploadFile)
+
 	app.Listen(":8080")
 }
-
