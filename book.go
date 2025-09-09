@@ -89,3 +89,11 @@ func uploadFile(c *fiber.Ctx) error{
 	}
 	return c.SendString("File Upload Complete!")
 }
+
+//render HTML render Engine
+func testHTML(c *fiber.Ctx) error{
+	return  c.Render("index",fiber.Map{
+		"Title": "Hello, World!",
+		"Name": "PPEACH",
+	})
+}
