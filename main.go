@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	jwtware "github.com/gofiber/jwt/v2"
 	"github.com/gofiber/template/html/v2"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/joho/godotenv"
 )
 
@@ -45,7 +47,12 @@ func main() {
 
 	app.Post("/login",login)
 
+	//JWT_SECRET
+	app.Use(jwtware.New(jwtware.Config{
+		SigningKey: []byte(os.Getenv("JWT_SECRET")),
+	}))
 	app.Use(checkMiddleware)
+
 		app.Get("/books",getBooks)
 		app.Get("/books/:id",getBook)
 		app.Post("/books",createBook)
@@ -68,12 +75,36 @@ func login(c *fiber.Ctx) error{
 	if user.Email!= member.Email || user.Password != member.Password{
 		return fiber.ErrUnauthorized
 	}
+
+	// Create token
+    token := jwt.New(jwt.SigningMethodHS256)
+
+    // Set claims
+    claims := token.Claims.(jwt.MapClaims)
+    claims["email"] = user.Email
+    claims["role"] = "admin"
+    claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
+
+    // Generate encoded token
+    t, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+    if err != nil {
+      return c.SendStatus(fiber.StatusInternalServerError)
+    }
+
 	return c.JSON(fiber.Map{
 		"message" : "Login success",
+		"token": t,
 	})
 }
 
 func checkMiddleware(c *fiber.Ctx)error{
+	user := c.Locals("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	
+	if claims ["role"] != "admin"{
+		return  fiber.ErrUnauthorized
+	}
+
 	start:=time.Now().In(time.FixedZone("UTC+7", 7*60*60))
 
 	fmt.Printf(
