@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	jwtware "github.com/gofiber/jwt/v2"
 	"github.com/golang-jwt/jwt/v4"
 
 	"cloud.google.com/go/firestore"
@@ -17,7 +16,7 @@ import (
 )
 
 type Book struct {
-	Tittle string `json:"title"`
+	Title string `json:"title"`
 	Author string `json:"author"`
 }
 
@@ -48,17 +47,23 @@ func main() {
 	// app.Post("/login",login)
 
 	// JWT_SECRET
-	app.Use(jwtware.New(jwtware.Config{
-		SigningKey: []byte(os.Getenv("JWT_SECRET")),
-	}))
-	app.Use(checkMiddleware)
+	// app.Use(jwtware.New(jwtware.Config{
+	// 	SigningKey: []byte(os.Getenv("JWT_SECRET")),
+	// }))
+	// app.Use(checkMiddleware)
 
 		app.Get("/users",getUsers)
 		app.Get("/users/:id",getUser)
-		app.Post("/books",createBook)
+		app.Post("/users",createUser)
+		app.Put("/edituser/:id",editUser)
+		app.Delete("/deleteusers/:id",deleteUser)
+
+
 		app.Get("/books",getBooks)
-		// app.Put("/editbook/:id",editBook)
-		// app.Delete("/deletebook/:id",deleteBook)
+		app.Get("/books/:id",getBookID)
+		app.Post("/books",createBook)
+		app.Put("/editbook/:id",editBook)
+		app.Delete("/deletebook/:id",deleteBook)
 		// app.Post("/upload",uploadFile)
 		app.Get("/api/config", getEnv)
 	app.Listen(":8080")
