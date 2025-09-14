@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	jwtware "github.com/gofiber/jwt/v2"
 	"github.com/golang-jwt/jwt/v4"
 
 	"cloud.google.com/go/firestore"
@@ -44,15 +45,15 @@ func main() {
 	defer Client.Close()
 
 
-	// app.Post("/login",login)
+	app.Post("/login",login)
 
+	app.Get("/users",getUsers)
 	// JWT_SECRET
-	// app.Use(jwtware.New(jwtware.Config{
-	// 	SigningKey: []byte(os.Getenv("JWT_SECRET")),
-	// }))
-	// app.Use(checkMiddleware)
+	app.Use(jwtware.New(jwtware.Config{
+		SigningKey: []byte(os.Getenv("JWT_SECRET")),
+	}))
+	app.Use(checkMiddleware)
 
-		app.Get("/users",getUsers)
 		app.Get("/users/:id",getUser)
 		app.Post("/users",createUser)
 		app.Put("/edituser/:id",editUser)
@@ -70,37 +71,52 @@ func main() {
 }
 
 
-// func login(c *fiber.Ctx) error{
-// 	user := new(User)
+func login(c *fiber.Ctx) error{
+	user := new(User)
 	
-// 	if err := c.BodyParser(user) ; err!=nil{
-// 		return  c.Status(fiber.StatusBadRequest).SendString(err.Error())
-// 	}
+	if err := c.BodyParser(user) ; err!=nil{
+		return  c.Status(fiber.StatusBadRequest).SendString(err.Error())
+	}
 
-// 	if user.Email!= member.Email || user.Password != member.Password{
-// 		return fiber.ErrUnauthorized
-// 	}
+	docs,err := Client.Collection("User").
+		Where("email", "==", user.Email).
+        Limit(1).
+        Documents(ctx).
+        Next()
+	if err != nil {
+        return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+    }
 
-// 	// Create token
-//     token := jwt.New(jwt.SigningMethodHS256)
+	var member User
+    if err := docs.DataTo(&member); err != nil {
+        return c.Status(fiber.StatusInternalServerError).SendString("Error parsing user data")
+    }
+	// ตรวจสอบ password (plain text)
+    if user.Password != member.Password {
+        return fiber.ErrUnauthorized
+    }
 
-//     // Set claims
-//     claims := token.Claims.(jwt.MapClaims)
-//     claims["email"] = user.Email
-//     claims["role"] = "admin"
-//     claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
 
-//     // Generate encoded token
-//     t, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
-//     if err != nil {
-//       return c.SendStatus(fiber.StatusInternalServerError)
-//     }
+	// Create token
+    token := jwt.New(jwt.SigningMethodHS256)
 
-// 	return c.JSON(fiber.Map{
-// 		"message" : "Login success",
-// 		"token": t,
-// 	})
-// }
+    // Set claims
+    claims := token.Claims.(jwt.MapClaims)
+    claims["email"] = user.Email
+    claims["role"] = "admin"
+    claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
+
+    // Generate encoded token
+    t, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+    if err != nil {
+      return c.SendStatus(fiber.StatusInternalServerError)
+    }
+
+	return c.JSON(fiber.Map{
+		"message" : "Login success",
+		"token": t,
+	})
+}
 
 func checkMiddleware(c *fiber.Ctx)error{
 	user := c.Locals("user").(*jwt.Token)
